@@ -34,7 +34,7 @@ public class GameInfoListener {
             "doc",
             gameId
             );
-        request.source("{ message : '" + message + "'}", XContentType.JSON);
+        request.source(message, XContentType.JSON);
 
         try {
             IndexResponse response = client.index(request, RequestOptions.DEFAULT);
