@@ -2,15 +2,14 @@ package fr.lernejo.fileinjector;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.support.AbstractApplicationContext;
 
 import java.lang.reflect.Array;
 import java.nio.file.Paths;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.SpringApplication;
@@ -24,35 +23,26 @@ public class Launcher {
 
     public static void main(String[] args) {
         try (AbstractApplicationContext springContext = new AnnotationConfigApplicationContext(Launcher.class)) {
+            ObjectMapper mapper = new ObjectMapper();
+            ArrayList<Game> listGame;
             try {
-                // create object mapper instance
-                ObjectMapper mapper = new ObjectMapper();
-
-                // convert JSON file to map
-                List<Map<String, Object>>  map = mapper.readValue(
+                listGame = mapper.readValue(
                     Paths.get(args[0]).toFile(),
-                    new TypeReference<List<Map<String,Object>>>(){}
+                    new TypeReference<ArrayList<Game>>(){}
                 );
-                Object[] mapArray = map.toArray();
-
-                var rabbitTemplate = springContext.getBean(RabbitTemplate.class);
-                // print map entries
-                for (int i = 0; i < mapArray.length; i++) {
-                    Map<String, Object> game = (Map<String, Object>) mapArray[i];
-                    System.out.println(game);
-                    int id = (int)game.get("id");
-                    game.remove("id");
-                    game.remove("freetogame_profile_url");
-                    rabbitTemplate.convertAndSend("", "game_info", game.toString(), m -> {
-                        m.getMessageProperties().getHeaders().put("game_id", id);
-                        m.getMessageProperties().setContentType("application/json");
-                        return m;
-                    });
-                }
             } catch (Exception ex) {
                 ex.printStackTrace();
+                return;
             }
-            System.out.println("Hello after starting Spring");
+
+            var rabbitTemplate = springContext.getBean(RabbitTemplate.class);
+            for (Game game : listGame) {
+                rabbitTemplate.setMessageConverter(new Jackson2JsonMessageConverter());
+                rabbitTemplate.convertAndSend("", "game_info", game, m -> {
+                    m.getMessageProperties().getHeaders().put("game_id", game.id());
+                    return m;
+                });
+            }
         }
     }
 }
