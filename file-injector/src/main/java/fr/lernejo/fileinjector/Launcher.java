@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.support.AbstractApplicationContext;
 
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.nio.file.Paths;
 import java.util.*;
@@ -21,20 +22,10 @@ import java.util.Map;
 @SpringBootApplication
 public class Launcher {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         try (AbstractApplicationContext springContext = new AnnotationConfigApplicationContext(Launcher.class)) {
-            ObjectMapper mapper = new ObjectMapper();
-            ArrayList<Game> listGame;
-            try {
-                listGame = mapper.readValue(
-                    Paths.get(args[0]).toFile(),
-                    new TypeReference<ArrayList<Game>>(){}
-                );
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                return;
-            }
-
+            ArrayList<Game> listGame = new ArrayList<>();
+            listGame = (new ObjectMapper()).readValue(Paths.get(args[0]).toFile(), new TypeReference<ArrayList<Game>>(){});
             var rabbitTemplate = springContext.getBean(RabbitTemplate.class);
             for (Game game : listGame) {
                 rabbitTemplate.setMessageConverter(new Jackson2JsonMessageConverter());
